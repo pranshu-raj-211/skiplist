@@ -3,11 +3,12 @@ package skiplist
 import (
 	"errors"
 	"math/rand"
+	"sync"
 )
 
 type Node struct {
-	key   int
-	value int
+	key   float32
+	value float32
 	next  []*Node
 }
 
@@ -16,6 +17,13 @@ type Skiplist struct {
 	level    int
 	maxLevel int
 	p        float64
+}
+
+var updatePool = sync.Pool{
+	New: func() any {
+		// Pre-allocate to maxLevel (e.g., 32)
+		return make([]*Node, 32)
+	},
 }
 
 // Creates a new skiplist for the given max level and promotion probability
@@ -45,7 +53,7 @@ func New(maxLevel int, p float64) *Skiplist {
 }
 
 // Search for node with given key in the skiplist
-func (s *Skiplist) Search(key int) (int, error) {
+func (s *Skiplist) Search(key float32) (float32, error) {
 	current := s.head
 
 	for i := s.level; i >= 0; i-- {
@@ -63,8 +71,9 @@ func (s *Skiplist) Search(key int) (int, error) {
 }
 
 // Insert or update a key-value pair
-func (s *Skiplist) Insert(key int, value int) {
-	update := make([]*Node, s.maxLevel+1)
+func (s *Skiplist) Insert(key float32, value float32) {
+	update := updatePool.Get().([]*Node)
+	defer updatePool.Put(update)
 	current := s.head
 
 	for i := s.level; i >= 0; i-- {
@@ -101,8 +110,9 @@ func (s *Skiplist) Insert(key int, value int) {
 }
 
 // Delete node with given key in the skiplist
-func (s *Skiplist) Delete(key int) error {
-	update := make([]*Node, s.maxLevel+1)
+func (s *Skiplist) Delete(key float32) error {
+	update := updatePool.Get().([]*Node)
+	defer updatePool.Put(update)
 	current := s.head
 
 	for i := s.level; i >= 0; i-- {
