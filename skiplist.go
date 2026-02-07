@@ -7,8 +7,8 @@ import (
 )
 
 type Node struct {
-	key   float32
-	value float32
+	key   int             
+	value interface{}   
 	next  []*Node
 }
 
@@ -53,7 +53,7 @@ func New(maxLevel int, p float64) *Skiplist {
 }
 
 // Search for node with given key in the skiplist
-func (s *Skiplist) Search(key float32) (float32, error) {
+func (s *Skiplist) Search(key int) (interface{}, error) {
 	current := s.head
 
 	for i := s.level; i >= 0; i-- {
@@ -71,7 +71,7 @@ func (s *Skiplist) Search(key float32) (float32, error) {
 }
 
 // Insert or update a key-value pair
-func (s *Skiplist) Insert(key float32, value float32) {
+func (s *Skiplist) Insert(key int, value interface{}) {
 	update := updatePool.Get().([]*Node)
 	defer updatePool.Put(update)
 	current := s.head
@@ -110,7 +110,7 @@ func (s *Skiplist) Insert(key float32, value float32) {
 }
 
 // Delete node with given key in the skiplist
-func (s *Skiplist) Delete(key float32) error {
+func (s *Skiplist) Delete(key int) error {
 	update := updatePool.Get().([]*Node)
 	defer updatePool.Put(update)
 	current := s.head
