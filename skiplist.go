@@ -2,13 +2,14 @@ package skiplist
 
 import (
 	"errors"
+	"math"
 	"math/rand"
 	"sync"
 )
 
 type Node struct {
-	key   int             
-	value interface{}   
+	key   int
+	value interface{}
 	next  []*Node
 }
 
@@ -17,6 +18,8 @@ type Skiplist struct {
 	level    int
 	maxLevel int
 	p        float64
+	probTable  []float64
+	randsource *rand.Rand
 }
 
 var updatePool = sync.Pool{
@@ -34,7 +37,7 @@ func New(maxLevel int, p float64) *Skiplist {
 	}
 	// default probability should be 1/2 - coin flip
 	if p <= 0.0 || p >= 1.0 {
-		p = 0.5
+		p = 1 / math.E
 	}
 
 	// keeping head's key as -1 does not matter as head's key is never compared
@@ -49,6 +52,8 @@ func New(maxLevel int, p float64) *Skiplist {
 		level:    0,
 		maxLevel: maxLevel,
 		p:        p,
+		probTable: computeProbTable(maxLevel, p),
+		randsource: rand.New(rand.NewSource(42)),
 	}
 }
 
@@ -89,7 +94,7 @@ func (s *Skiplist) Insert(key int, value interface{}) {
 		return
 	}
 
-	nodeLevel := randomLevel(s.maxLevel, s.p)
+	nodeLevel := s.randomLevel()
 	if nodeLevel > s.level {
 		for i := s.level + 1; i <= nodeLevel; i++ {
 			update[i] = s.head
@@ -143,10 +148,22 @@ func (s *Skiplist) Delete(key int) error {
 
 // Returns a random level based on a geometric probability distribution with prob p
 // a fraction p of nodes from the current level will be promoted to next upper level
-func randomLevel(maxLevel int, p float64) int {
+func (s *Skiplist) randomLevel() int {
+	r:= s.randsource.Float64()
 	level := 0
-	for level < maxLevel && rand.Float64() < p {
+	for level < s.maxLevel && r < s.probTable[level] {
 		level++
 	}
 	return level
+}
+
+// compute the probabilities at which we will promote in advance
+func computeProbTable(maxLevel int, p float64) []float64 {
+	probTable := make([]float64, maxLevel+1)
+	currentProb := 1.0
+	for i :=0; i<=maxLevel; i++{
+		probTable[i]=currentProb
+		currentProb*=p
+	}
+	return probTable
 }
