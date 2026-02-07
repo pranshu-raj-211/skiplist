@@ -4,7 +4,6 @@ import (
 	"errors"
 	"math"
 	"math/rand"
-	"sync"
 )
 
 type Node struct {
@@ -20,13 +19,7 @@ type Skiplist struct {
 	p        float64
 	probTable  []float64
 	randsource *rand.Rand
-}
-
-var updatePool = sync.Pool{
-	New: func() any {
-		// Pre-allocate to maxLevel (e.g., 32)
-		return make([]*Node, 32)
-	},
+	update     []*Node
 }
 
 // Creates a new skiplist for the given max level and promotion probability
@@ -77,15 +70,13 @@ func (s *Skiplist) Search(key int) (interface{}, error) {
 
 // Insert or update a key-value pair
 func (s *Skiplist) Insert(key int, value interface{}) {
-	update := updatePool.Get().([]*Node)
-	defer updatePool.Put(update)
 	current := s.head
 
 	for i := s.level; i >= 0; i-- {
 		for current.next[i] != nil && current.next[i].key < key {
 			current = current.next[i]
 		}
-		update[i] = current
+		s.update[i] = current
 	}
 
 	current = current.next[0]
@@ -97,7 +88,7 @@ func (s *Skiplist) Insert(key int, value interface{}) {
 	nodeLevel := s.randomLevel()
 	if nodeLevel > s.level {
 		for i := s.level + 1; i <= nodeLevel; i++ {
-			update[i] = s.head
+			s.update[i] = s.head
 		}
 		s.level = nodeLevel
 	}
@@ -109,22 +100,20 @@ func (s *Skiplist) Insert(key int, value interface{}) {
 	}
 
 	for i := 0; i <= nodeLevel; i++ {
-		newNode.next[i] = update[i].next[i]
-		update[i].next[i] = newNode
+		newNode.next[i] = s.update[i].next[i]
+		s.update[i].next[i] = newNode
 	}
 }
 
 // Delete node with given key in the skiplist
 func (s *Skiplist) Delete(key int) error {
-	update := updatePool.Get().([]*Node)
-	defer updatePool.Put(update)
 	current := s.head
 
 	for i := s.level; i >= 0; i-- {
 		for current.next[i] != nil && current.next[i].key < key {
 			current = current.next[i]
 		}
-		update[i] = current
+		s.update[i] = current
 	}
 
 	current = current.next[0]
@@ -133,10 +122,10 @@ func (s *Skiplist) Delete(key int) error {
 	}
 
 	for i := 0; i <= s.level; i++ {
-		if update[i].next[i] != current {
+		if s.update[i].next[i] != current {
 			break
 		}
-		update[i].next[i] = current.next[i]
+		s.update[i].next[i] = current.next[i]
 	}
 
 	for s.level > 0 && s.head.next[s.level] == nil {
