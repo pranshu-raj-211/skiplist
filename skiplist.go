@@ -12,11 +12,21 @@ type Node struct {
 	next  []*Node
 }
 
+type KeyValuePair struct {
+	key   int
+	value interface{}
+}
+
+type RangeIterator struct {
+	current *Node
+	endKey int
+}
+
 type Skiplist struct {
-	head     *Node
-	level    int
-	maxLevel int
-	p        float64
+	head       *Node
+	level      int
+	maxLevel   int
+	p          float64
 	probTable  []float64
 	randsource *rand.Rand
 	update     []*Node
@@ -41,11 +51,11 @@ func New(maxLevel int, p float64) *Skiplist {
 	}
 
 	return &Skiplist{
-		head:     head,
-		level:    0,
-		maxLevel: maxLevel,
-		p:        p,
-		probTable: computeProbTable(maxLevel, p),
+		head:       head,
+		level:      0,
+		maxLevel:   maxLevel,
+		p:          p,
+		probTable:  computeProbTable(maxLevel, p),
 		randsource: rand.New(rand.NewSource(42)),
 	}
 }
@@ -135,10 +145,68 @@ func (s *Skiplist) Delete(key int) error {
 	return nil
 }
 
+// Returns a list of key value pairs between [startKey, endKey] (both inclusive)
+func (s *Skiplist) RangeQuery(startKey, endKey int) []KeyValuePair {
+	if startKey > endKey {
+		return nil
+	}
+
+	results := make([]KeyValuePair, 0)
+	current := s.head
+	for i := s.level; i >= 0; i-- {
+		for current.next[i] != nil && current.next[i].key < startKey {
+			current = current.next[i]
+		}
+	}
+
+	current = current.next[0]
+	if current.key != startKey {
+		return nil
+	}
+
+	for current != nil && current.key <= endKey {
+		results = append(results, KeyValuePair{
+			key:   current.key,
+			value: current.value,
+		})
+		current = current.next[0]
+	}
+
+	return results
+}
+
+func (s *Skiplist) RangeQueryIterator(startKey, endKey int) *RangeIterator{
+	if startKey > endKey {
+        return &RangeIterator{current: nil, endKey: endKey}
+    }
+    
+    // Find starting position
+    current := s.head
+    for i := s.level; i >= 0; i-- {
+        for current.next[i] != nil && current.next[i].key < startKey {
+            current = current.next[i]
+        }
+    }
+    
+    return &RangeIterator{
+        current: current.next[0],
+        endKey:  endKey,
+    }
+}
+
+// Move to the next node if it makes sense to do so
+func (it *RangeIterator) Next() {
+    if it.current != nil && it.current.key<it.endKey {
+        it.current = it.current.next[0]
+    }
+}
+
+// key and value can be extracted from the iterator by using it.current.key and it.current.value respectively
+
 // Returns a random level based on a geometric probability distribution with prob p
 // a fraction p of nodes from the current level will be promoted to next upper level
 func (s *Skiplist) randomLevel() int {
-	r:= s.randsource.Float64()
+	r := s.randsource.Float64()
 	level := 0
 	for level < s.maxLevel && r < s.probTable[level] {
 		level++
@@ -150,9 +218,9 @@ func (s *Skiplist) randomLevel() int {
 func computeProbTable(maxLevel int, p float64) []float64 {
 	probTable := make([]float64, maxLevel+1)
 	currentProb := 1.0
-	for i :=0; i<=maxLevel; i++{
-		probTable[i]=currentProb
-		currentProb*=p
+	for i := 0; i <= maxLevel; i++ {
+		probTable[i] = currentProb
+		currentProb *= p
 	}
 	return probTable
 }
