@@ -1,7 +1,6 @@
 package skiplist
 
 import (
-	"errors"
 	"math"
 	"math/rand"
 )
@@ -116,7 +115,7 @@ func (s *Skiplist) Insert(key int, value any) {
 }
 
 // Delete node with given key in the skiplist
-func (s *Skiplist) Delete(key int) error {
+func (s *Skiplist) Delete(key int) {
 	current := s.head
 
 	for i := s.level; i >= 0; i-- {
@@ -128,7 +127,7 @@ func (s *Skiplist) Delete(key int) error {
 
 	current = current.next[0]
 	if current == nil || current.key != key {
-		return errors.New("key not found")
+		return
 	}
 
 	for i := 0; i <= s.level; i++ {
@@ -141,8 +140,6 @@ func (s *Skiplist) Delete(key int) error {
 	for s.level > 0 && s.head.next[s.level] == nil {
 		s.level--
 	}
-
-	return nil
 }
 
 // Returns a list of key value pairs between [startKey, endKey] (both inclusive)
