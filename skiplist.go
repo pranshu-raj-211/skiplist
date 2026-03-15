@@ -56,6 +56,7 @@ func New(maxLevel int, p float64) *Skiplist {
 		p:          p,
 		probTable:  computeProbTable(maxLevel, p),
 		randsource: rand.New(rand.NewSource(42)),
+		update: make([]*Node, maxLevel+1),
 	}
 }
 
