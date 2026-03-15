@@ -8,13 +8,13 @@ import (
 
 type Node struct {
 	key   int
-	value interface{}
+	value any
 	next  []*Node
 }
 
 type KeyValuePair struct {
 	key   int
-	value interface{}
+	value any
 }
 
 type RangeIterator struct {
@@ -61,7 +61,7 @@ func New(maxLevel int, p float64) *Skiplist {
 }
 
 // Search for node with given key in the skiplist
-func (s *Skiplist) Search(key int) (interface{}, error) {
+func (s *Skiplist) Search(key int) (any, bool) {
 	current := s.head
 
 	for i := s.level; i >= 0; i-- {
@@ -72,14 +72,14 @@ func (s *Skiplist) Search(key int) (interface{}, error) {
 
 	current = current.next[0]
 	if current != nil && current.key == key {
-		return current.value, nil
+		return current.value, true
 	}
 
-	return 0, errors.New("key not found")
+	return 0, false
 }
 
 // Insert or update a key-value pair
-func (s *Skiplist) Insert(key int, value interface{}) {
+func (s *Skiplist) Insert(key int, value any) {
 	current := s.head
 
 	for i := s.level; i >= 0; i-- {
